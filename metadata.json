@@ -1,0 +1,5 @@
+{
+  "name": "TechMock - Technical Test Simulator",
+  "description": "A professional technical mock test simulator for students to practice programming and algorithms questions under exam conditions. Features AI-powered question generation for admins.",
+  "requestFramePermissions": []
+}
