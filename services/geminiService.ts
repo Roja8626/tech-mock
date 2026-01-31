@@ -1,14 +1,50 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Question } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Read the API key injected at build-time by Vite (define)
+const API_KEY = (process.env.API_KEY || process.env.GEMINI_API_KEY) as string | undefined;
+
+const createAiClient = (apiKey?: string) => {
+  if (!apiKey) return null;
+  return new GoogleGenAI({ apiKey });
+};
+
+const mockGenerate = (topic: string, count: number) => {
+  const qs: Question[] = [];
+  for (let i = 0; i < count; i++) {
+    qs.push({
+      id: `mock-${Date.now()}-${i}`,
+      text: `Mock question ${i + 1} about ${topic}`,
+      options: [
+        `Option A for ${topic}`,
+        `Option B for ${topic}`,
+        `Option C for ${topic}`,
+        `Option D for ${topic}`,
+      ],
+      correctOptionIndex: Math.floor(Math.random() * 4),
+      category: topic,
+    });
+  }
+  return qs;
+};
 
 export const generateQuestions = async (topic: string, count: number = 5): Promise<Question[]> => {
+  // If no API key is provided at build time, don't attempt to call the Google GenAI client in the browser.
+  if (!API_KEY) {
+    console.warn('GEMINI_API_KEY not set. Returning mock questions instead of calling Google GenAI.');
+    return mockGenerate(topic, count);
+  }
+
+  const ai = createAiClient(API_KEY);
+  if (!ai) {
+    console.warn('Failed to create AI client; returning mock questions.');
+    return mockGenerate(topic, count);
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Generate ${count} difficult technical interview multiple-choice questions about "${topic}". 
-      Each question must have 4 options and one correct answer index (0-3).`,
+      contents: `Generate ${count} difficult technical interview multiple-choice questions about "${topic}".\nEach question must have 4 options and one correct answer index (0-3).`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -17,8 +53,8 @@ export const generateQuestions = async (topic: string, count: number = 5): Promi
             type: Type.OBJECT,
             properties: {
               text: { type: Type.STRING, description: "The question text" },
-              options: { 
-                type: Type.ARRAY, 
+              options: {
+                type: Type.ARRAY,
                 items: { type: Type.STRING },
                 description: "Array of 4 possible answers"
               },
@@ -35,7 +71,7 @@ export const generateQuestions = async (topic: string, count: number = 5): Promi
     if (!jsonText) return [];
 
     const rawQuestions = JSON.parse(jsonText);
-    
+
     // Transform to our internal Question type with unique IDs
     return rawQuestions.map((q: any) => ({
       id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -47,6 +83,7 @@ export const generateQuestions = async (topic: string, count: number = 5): Promi
 
   } catch (error) {
     console.error("Failed to generate questions:", error);
-    throw error;
+    // On errors, fall back to mock items so the UI remains usable
+    return mockGenerate(topic, count);
   }
 };

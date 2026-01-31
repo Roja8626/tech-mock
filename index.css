@@ -1,0 +1,13 @@
+/* index.css — prevents 404 when loading /index.css
+   Note: For production, remove the Tailwind CDN from index.html and install Tailwind via PostCSS or the Tailwind CLI: https://tailwindcss.com/docs/installation */
+
+:root {
+  --app-font: 'Inter', sans-serif;
+}
+
+body {
+  font-family: var(--app-font);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
